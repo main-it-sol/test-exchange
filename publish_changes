@@ -1,0 +1,47 @@
+ #!/bin/bash
+
+# Check if the current directory is a Git repository
+if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+  echo "Error: Not inside a Git repository." >&2
+  exit 1
+fi
+
+# Set default commit message
+comment="last update"
+
+# Parse command-line options
+while getopts ":c:" opt; do
+  case $opt in
+    c) comment="$OPTARG" ;;
+    :) echo "Option -$OPTARG requires an argument." >&2; exit 1 ;;
+    \?) echo "Invalid option: -$OPTARG" >&2; exit 1 ;;
+  esac
+done
+
+# Shift past the options
+shift $((OPTIND - 1))
+
+# Check for unexpected arguments
+if [ $# -gt 0 ]; then
+  echo "Error: Unexpected arguments: $@" >&2
+  exit 1
+fi
+
+# Check if there are any changes to commit
+if [ -z "$(git status --porcelain)" ]; then
+  echo "No changes to commit."
+else
+  # Add all changes in the current directory
+  git add .
+  # Commit with the specified or default message
+  if git commit -m "$comment"; then
+    # Push to origin main
+    if ! git push origin main; then
+      echo "Error: Failed to push changes." >&2
+      exit 1
+    fi
+  else
+    echo "Error: Failed to commit changes." >&2
+    exit 1
+  fi
+fi
